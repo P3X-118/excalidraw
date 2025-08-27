@@ -24,7 +24,9 @@ import {
 
 import {
   deconstructLinearOrFreeDrawElement,
+  distanceToElement,
   isPathALoop,
+  isPointInElement,
   moveArrowAboveBindable,
   type Store,
 } from "@excalidraw/element";
@@ -44,6 +46,7 @@ import {
   getBindingStrategyForDraggingBindingElementEndpoints,
   getStartGlobalEndLocalPointsForSimpleArrowBinding,
   maybeSuggestBindingsForBindingElementAtCoords,
+  unbindBindingElement,
 } from "./binding";
 import {
   getElementAbsoluteCoords,
@@ -54,7 +57,12 @@ import {
 import { headingIsHorizontal, vectorToHeading } from "./heading";
 import { mutateElement } from "./mutateElement";
 import { getBoundTextElement, handleBindTextResize } from "./textElement";
-import { isArrowElement, isBindingElement, isElbowArrow } from "./typeChecks";
+import {
+  isArrowElement,
+  isBindingElement,
+  isElbowArrow,
+  isSimpleArrow,
+} from "./typeChecks";
 
 import { ShapeCache, toggleLinePolygonState } from "./shape";
 
@@ -362,29 +370,80 @@ export class LinearElementEditor {
           ),
         );
       } else {
-        const newDraggingPointPosition = LinearElementEditor.createPointAt(
-          element,
-          elementsMap,
-          scenePointerX - linearElementEditor.pointerOffset.x,
-          scenePointerY - linearElementEditor.pointerOffset.y,
-          event[KEYS.CTRL_OR_CMD] ? null : app.getEffectiveGridSize(),
+        const scenePointer = pointFrom<GlobalPoint>(
+          scenePointerX,
+          scenePointerY,
         );
-        const deltaX = newDraggingPointPosition[0] - draggingPoint[0];
-        const deltaY = newDraggingPointPosition[1] - draggingPoint[1];
+        // Do not allow dragging the bound arrow closer to the shape than
+        // the dragging threshold
+        let allowDrag = true;
+        if (isSimpleArrow(element)) {
+          if (selectedPointsIndices.includes(0) && element.startBinding) {
+            const boundElement = elementsMap.get(
+              element.startBinding.elementId,
+            )!;
+            const dist = distanceToElement(
+              boundElement,
+              elementsMap,
+              scenePointer,
+            );
+            const inside = isPointInElement(
+              scenePointer,
+              boundElement,
+              elementsMap,
+            );
+            allowDrag = allowDrag && (dist > DRAGGING_THRESHOLD || inside);
+            if (allowDrag) {
+              unbindBindingElement(element, "start", app.scene);
+            }
+          }
+          if (
+            selectedPointsIndices.includes(element.points.length - 1) &&
+            element.endBinding
+          ) {
+            const boundElement = elementsMap.get(element.endBinding.elementId)!;
+            const dist = distanceToElement(
+              boundElement,
+              elementsMap,
+              scenePointer,
+            );
+            const inside = isPointInElement(
+              scenePointer,
+              boundElement,
+              elementsMap,
+            );
+            allowDrag = allowDrag && (dist > DRAGGING_THRESHOLD || inside);
+            if (allowDrag) {
+              unbindBindingElement(element, "end", app.scene);
+            }
+          }
+        }
 
-        LinearElementEditor.movePoints(
-          element,
-          app.scene,
-          pointDraggingUpdates(
-            selectedPointsIndices,
-            deltaX,
-            deltaY,
-            elementsMap,
+        if (allowDrag) {
+          const newDraggingPointPosition = LinearElementEditor.createPointAt(
             element,
-            elements,
-            app,
-          ),
-        );
+            elementsMap,
+            scenePointerX - linearElementEditor.pointerOffset.x,
+            scenePointerY - linearElementEditor.pointerOffset.y,
+            event[KEYS.CTRL_OR_CMD] ? null : app.getEffectiveGridSize(),
+          );
+          const deltaX = newDraggingPointPosition[0] - draggingPoint[0];
+          const deltaY = newDraggingPointPosition[1] - draggingPoint[1];
+
+          LinearElementEditor.movePoints(
+            element,
+            app.scene,
+            pointDraggingUpdates(
+              selectedPointsIndices,
+              deltaX,
+              deltaY,
+              elementsMap,
+              element,
+              elements,
+              app,
+            ),
+          );
+        }
       }
 
       const boundTextElement = getBoundTextElement(element, elementsMap);
