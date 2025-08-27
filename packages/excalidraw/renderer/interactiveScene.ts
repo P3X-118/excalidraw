@@ -46,18 +46,12 @@ import {
 import { getCommonBounds, getElementAbsoluteCoords } from "@excalidraw/element";
 
 import type {
-  SuggestedBinding,
-  SuggestedPointBinding,
-} from "@excalidraw/element";
-
-import type {
   TransformHandles,
   TransformHandleType,
 } from "@excalidraw/element";
 
 import type {
   ElementsMap,
-  ExcalidrawBindableElement,
   ExcalidrawElement,
   ExcalidrawFrameLikeElement,
   ExcalidrawImageElement,
@@ -186,47 +180,6 @@ const renderSingleLinearPoint = <Point extends GlobalPoint | LocalPoint>(
   );
 };
 
-const renderBindingHighlightForBindableElement = (
-  context: CanvasRenderingContext2D,
-  element: ExcalidrawBindableElement,
-  _elementsMap: ElementsMap,
-  appState: Pick<InteractiveCanvasAppState, "theme">,
-) => {
-  context.translate(element.x, element.y);
-
-  const rc = rough.canvas(context.canvas);
-  const drawable = ShapeCache.generateBindableElementHighlight(
-    element,
-    appState,
-  );
-  rc.draw(drawable);
-};
-
-const renderBindingHighlightForSuggestedPointBinding = (
-  context: CanvasRenderingContext2D,
-  suggestedBinding: SuggestedPointBinding,
-  elementsMap: ElementsMap,
-  appState: Pick<InteractiveCanvasAppState, "theme">,
-) => {
-  const [element, startOrEnd] = suggestedBinding;
-
-  const threshold = 0;
-
-  context.strokeStyle = "rgba(0,0,0,0)";
-  context.fillStyle = "rgba(0,0,0,.05)";
-
-  const pointIndices =
-    startOrEnd === "both" ? [0, -1] : startOrEnd === "start" ? [0] : [-1];
-  pointIndices.forEach((index) => {
-    const [x, y] = LinearElementEditor.getPointAtIndexGlobalCoordinates(
-      element,
-      index,
-      elementsMap,
-    );
-    fillCircle(context, x, y, threshold, true);
-  });
-};
-
 type ElementSelectionBorder = {
   angle: number;
   x1: number;
@@ -299,16 +252,20 @@ const renderSelectionBorder = (
 const renderBindingHighlight = (
   context: CanvasRenderingContext2D,
   appState: InteractiveCanvasAppState,
-  suggestedBinding: SuggestedBinding,
-  elementsMap: ElementsMap,
+  suggestedBinding: NonNullable<InteractiveCanvasAppState["suggestedBinding"]>,
 ) => {
-  const renderHighlight = Array.isArray(suggestedBinding)
-    ? renderBindingHighlightForSuggestedPointBinding
-    : renderBindingHighlightForBindableElement;
-
   context.save();
-  context.translate(appState.scrollX, appState.scrollY);
-  renderHighlight(context, suggestedBinding as any, elementsMap, appState);
+
+  context.translate(
+    appState.scrollX + suggestedBinding.x,
+    appState.scrollY + suggestedBinding.y,
+  );
+
+  const drawable = ShapeCache.generateBindableElementHighlight(
+    suggestedBinding,
+    appState,
+  );
+  rough.canvas(context.canvas).draw(drawable);
 
   context.restore();
 };
@@ -773,17 +730,8 @@ const _renderInteractiveScene = ({
     }
   }
 
-  if (appState.isBindingEnabled) {
-    appState.suggestedBindings
-      .filter((binding) => binding != null)
-      .forEach((suggestedBinding) => {
-        renderBindingHighlight(
-          context,
-          appState,
-          suggestedBinding!,
-          elementsMap,
-        );
-      });
+  if (appState.isBindingEnabled && appState.suggestedBinding) {
+    renderBindingHighlight(context, appState, appState.suggestedBinding);
   }
 
   if (appState.frameToHighlight) {

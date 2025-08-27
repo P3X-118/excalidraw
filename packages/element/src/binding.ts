@@ -3,7 +3,6 @@ import {
   arrayToMap,
   invariant,
   isAlwaysInsideBinding,
-  tupleToCoors,
 } from "@excalidraw/common";
 
 import {
@@ -33,7 +32,6 @@ import {
   getElementBounds,
 } from "./bounds";
 import {
-  bindingBorderTest,
   getHoveredElementForBinding,
   hitElementItself,
   intersectElementWithLineSegment,
@@ -81,16 +79,6 @@ import type {
   Ordered,
   BindMode,
 } from "./types";
-
-export type SuggestedBinding =
-  | NonDeleted<ExcalidrawBindableElement>
-  | SuggestedPointBinding;
-
-export type SuggestedPointBinding = [
-  NonDeleted<ExcalidrawArrowElement>,
-  "start" | "end" | "both",
-  NonDeleted<ExcalidrawBindableElement>,
-];
 
 export type BindingStrategy =
   // Create a new binding with this mode
@@ -196,39 +184,6 @@ const bindOrUnbindBindingElementEdge = (
     bindBindingElement(arrow, element, mode, startOrEnd, scene, focusPoint);
   }
 };
-
-const getOriginalBindingsIfStillCloseToBindingEnds = (
-  linearElement: NonDeleted<ExcalidrawArrowElement>,
-  elementsMap: NonDeletedSceneElementsMap,
-): (NonDeleted<ExcalidrawElement> | null)[] =>
-  (["start", "end"] as const).map((edge) => {
-    const coors = tupleToCoors(
-      LinearElementEditor.getPointAtIndexGlobalCoordinates(
-        linearElement,
-        edge === "start" ? 0 : -1,
-        elementsMap,
-      ),
-    );
-    const elementId =
-      edge === "start"
-        ? linearElement.startBinding?.elementId
-        : linearElement.endBinding?.elementId;
-    if (elementId) {
-      const element = elementsMap.get(elementId);
-      if (
-        isBindableElement(element) &&
-        bindingBorderTest(
-          element,
-          pointFrom<GlobalPoint>(coors.x, coors.y),
-          elementsMap,
-        )
-      ) {
-        return element;
-      }
-    }
-
-    return null;
-  });
 
 export const getStartGlobalEndLocalPointsForSimpleArrowBinding = (
   arrow: NonDeleted<ExcalidrawArrowElement>,
@@ -665,43 +620,12 @@ export const bindOrUnbindBindingElements = (
   });
 };
 
-export const getSuggestedBindingsForBindingElements = (
-  selectedElements: NonDeleted<ExcalidrawElement>[],
-  elementsMap: NonDeletedSceneElementsMap,
-): SuggestedBinding[] => {
-  // HOT PATH: Bail out if selected elements list is too large
-  if (selectedElements.length > 50) {
-    return [];
-  }
-
-  return (
-    selectedElements
-      .filter(isArrowElement)
-      .flatMap((element) =>
-        getOriginalBindingsIfStillCloseToBindingEnds(element, elementsMap),
-      )
-      .filter(
-        (element): element is NonDeleted<ExcalidrawBindableElement> =>
-          element !== null,
-      )
-      // Filter out bind candidates which are in the
-      // same selection / group with the arrow
-      //
-      // TODO: Is it worth turning the list into a set to avoid dupes?
-      .filter(
-        (element) =>
-          selectedElements.filter((selected) => selected.id === element?.id)
-            .length === 0,
-      )
-  );
-};
-
 export const maybeSuggestBindingsForBindingElementAtCoords = (
   linearElement: NonDeleted<ExcalidrawArrowElement>,
   startOrEndOrBoth: "start" | "end" | "both",
   scene: Scene,
   pointerCoords: GlobalPoint,
-): ExcalidrawBindableElement[] => {
+): AppState["suggestedBinding"] => {
   const startCoords =
     startOrEndOrBoth === "start"
       ? pointerCoords
@@ -729,7 +653,7 @@ export const maybeSuggestBindingsForBindingElementAtCoords = (
     scene.getNonDeletedElementsMap(),
   );
 
-  const suggestedBindings = [];
+  let suggestedBinding: AppState["suggestedBinding"] = null;
 
   if (startHovered != null && startHovered.id === endHovered?.id) {
     const hitStart = hitElementItself({
@@ -747,15 +671,15 @@ export const maybeSuggestBindingsForBindingElementAtCoords = (
       overrideShouldTestInside: true,
     });
     if (hitStart && hitEnd) {
-      suggestedBindings.push(startHovered);
+      suggestedBinding = startHovered;
     }
   } else if (startOrEndOrBoth === "start" && startHovered != null) {
-    suggestedBindings.push(startHovered);
+    suggestedBinding = startHovered;
   } else if (startOrEndOrBoth === "end" && endHovered != null) {
-    suggestedBindings.push(endHovered);
+    suggestedBinding = endHovered;
   }
 
-  return suggestedBindings;
+  return suggestedBinding;
 };
 
 export const bindBindingElement = (

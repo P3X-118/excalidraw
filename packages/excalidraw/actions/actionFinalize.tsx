@@ -153,7 +153,7 @@ export const actionFinalize = register<FormData>({
               isEditing: false,
             },
             selectionElement: null,
-            suggestedBindings: [],
+            suggestedBinding: null,
             newElement: null,
             multiElement: null,
           },
@@ -302,7 +302,7 @@ export const actionFinalize = register<FormData>({
         multiElement: null,
         editingTextElement: null,
         startBoundElement: null,
-        suggestedBindings: [],
+        suggestedBinding: null,
         selectedElementIds:
           element &&
           !appState.activeTool.locked &&

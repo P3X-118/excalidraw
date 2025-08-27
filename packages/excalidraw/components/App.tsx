@@ -118,7 +118,6 @@ import {
   isBindingEnabled,
   shouldEnableBindingForPointerEvent,
   updateBoundElements,
-  getSuggestedBindingsForBindingElements,
   LinearElementEditor,
   newElementWith,
   newFrameElement,
@@ -4586,10 +4585,6 @@ class App extends React.Component<AppProps, AppState> {
           includeElementsInFrames: true,
         });
 
-        const elbowArrow = selectedElements.find(isElbowArrow) as
-          | ExcalidrawArrowElement
-          | undefined;
-
         const arrowIdsToRemove = new Set<string>();
 
         selectedElements
@@ -4650,15 +4645,6 @@ class App extends React.Component<AppProps, AppState> {
           updateBoundElements(element, this.scene, {
             simultaneouslyUpdated: selectedElements,
           });
-        });
-
-        this.setState({
-          suggestedBindings: getSuggestedBindingsForBindingElements(
-            selectedElements.filter(
-              (element) => element.id !== elbowArrow?.id || step !== 0,
-            ),
-            this.scene.getNonDeletedElementsMap(),
-          ),
         });
 
         this.scene.triggerUpdate();
@@ -4951,7 +4937,7 @@ class App extends React.Component<AppProps, AppState> {
           }
         });
 
-      this.setState({ suggestedBindings: [] });
+      this.setState({ suggestedBinding: null });
     }
 
     if (!event.altKey) {
@@ -5050,7 +5036,7 @@ class App extends React.Component<AppProps, AppState> {
       this.focusContainer();
     }
     if (!isLinearElementType(nextActiveTool.type)) {
-      this.setState({ suggestedBindings: [] });
+      this.setState({ suggestedBinding: null });
     }
     if (nextActiveTool.type === "image") {
       this.onImageAction();
@@ -6212,7 +6198,7 @@ class App extends React.Component<AppProps, AppState> {
       const { newElement } = this.state;
       if (isBindingElement(newElement, false)) {
         this.setState({
-          suggestedBindings: maybeSuggestBindingsForBindingElementAtCoords(
+          suggestedBinding: maybeSuggestBindingsForBindingElementAtCoords(
             newElement,
             "end",
             this.scene,
@@ -6806,7 +6792,7 @@ class App extends React.Component<AppProps, AppState> {
           newElement: null,
           editingTextElement: null,
           startBoundElement: null,
-          suggestedBindings: [],
+          suggestedBinding: null,
           selectedElementIds: makeNextSelectedElementIds(
             Object.keys(this.state.selectedElementIds)
               .filter((key) => key !== element.id)
@@ -8060,7 +8046,7 @@ class App extends React.Component<AppProps, AppState> {
     this.setState({
       newElement: element,
       startBoundElement: boundElement,
-      suggestedBindings: [],
+      suggestedBinding: null,
     });
   };
 
@@ -8439,7 +8425,7 @@ class App extends React.Component<AppProps, AppState> {
           bindMode: "orbit",
           newElement: element,
           startBoundElement: boundElement,
-          suggestedBindings: boundElement ? [boundElement] : [],
+          suggestedBinding: boundElement || null,
           selectedElementIds: nextSelectedElementIds,
           selectedLinearElement: linearElementEditor,
         };
@@ -8825,10 +8811,7 @@ class App extends React.Component<AppProps, AppState> {
           // NOTE: Optimize setState calls because it
           // affects history and performance
           if (
-            !isShallowEqual(
-              newState.suggestedBindings ?? [],
-              this.state.suggestedBindings,
-            ) ||
+            newState.suggestedBinding !== this.state.suggestedBinding ||
             !isShallowEqual(
               newState.selectedLinearElement?.selectedPointsIndices ?? [],
               this.state.selectedLinearElement?.selectedPointsIndices ?? [],
@@ -9073,18 +9056,6 @@ class App extends React.Component<AppProps, AppState> {
             // should be removed
             selectionElement: null,
           });
-
-          if (
-            selectedElements.length !== 1 ||
-            !isElbowArrow(selectedElements[0])
-          ) {
-            this.setState({
-              suggestedBindings: getSuggestedBindingsForBindingElements(
-                selectedElements,
-                this.scene.getNonDeletedElementsMap(),
-              ),
-            });
-          }
 
           // We duplicate the selected element if alt is pressed on pointer move
           if (event.altKey && !pointerDownState.hit.hasBeenDuplicated) {
@@ -9387,7 +9358,7 @@ class App extends React.Component<AppProps, AppState> {
           if (isBindingElement(newElement, false)) {
             // When creating a linear element by dragging
             this.setState({
-              suggestedBindings: maybeSuggestBindingsForBindingElementAtCoords(
+              suggestedBinding: maybeSuggestBindingsForBindingElementAtCoords(
                 newElement,
                 "end",
                 this.scene,
@@ -9679,7 +9650,7 @@ class App extends React.Component<AppProps, AppState> {
           if (editingLinearElement !== this.state.selectedLinearElement) {
             this.setState({
               selectedLinearElement: editingLinearElement,
-              suggestedBindings: [],
+              suggestedBinding: null,
             });
           }
         }
@@ -9840,7 +9811,7 @@ class App extends React.Component<AppProps, AppState> {
               sceneCoords,
             });
           }
-          this.setState({ suggestedBindings: [], startBoundElement: null });
+          this.setState({ suggestedBinding: null, startBoundElement: null });
           if (!activeTool.locked) {
             resetCursor(this.interactiveCanvas);
             this.setState((prevState) => ({
@@ -10455,7 +10426,7 @@ class App extends React.Component<AppProps, AppState> {
         resetCursor(this.interactiveCanvas);
         this.setState({
           newElement: null,
-          suggestedBindings: [],
+          suggestedBinding: null,
           activeTool: updateActiveTool(this.state, {
             type: this.defaultSelectionTool,
           }),
@@ -10463,7 +10434,7 @@ class App extends React.Component<AppProps, AppState> {
       } else {
         this.setState({
           newElement: null,
-          suggestedBindings: [],
+          suggestedBinding: null,
         });
       }
 
@@ -10940,8 +10911,7 @@ class App extends React.Component<AppProps, AppState> {
       this.scene.getNonDeletedElementsMap(),
     );
     this.setState({
-      suggestedBindings:
-        hoveredBindableElement != null ? [hoveredBindableElement] : [],
+      suggestedBinding: hoveredBindableElement ?? null,
     });
   };
 
@@ -11557,11 +11527,6 @@ class App extends React.Component<AppProps, AppState> {
         pointerDownState.resize.center.y,
       )
     ) {
-      const suggestedBindings = getSuggestedBindingsForBindingElements(
-        selectedElements,
-        this.scene.getNonDeletedElementsMap(),
-      );
-
       const elementsToHighlight = new Set<ExcalidrawElement>();
       selectedFrames.forEach((frame) => {
         getElementsInResizingFrame(
@@ -11574,7 +11539,6 @@ class App extends React.Component<AppProps, AppState> {
 
       this.setState({
         elementsToHighlight: [...elementsToHighlight],
-        suggestedBindings,
       });
 
       return true;

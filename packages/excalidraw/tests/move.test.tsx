@@ -102,7 +102,7 @@ describe("move element", () => {
     new Pointer("mouse").clickOn(rectB);
 
     expect(renderInteractiveScene.mock.calls.length).toMatchInlineSnapshot(
-      `17`,
+      `15`,
     );
     expect(renderStaticScene.mock.calls.length).toMatchInlineSnapshot(`13`);
     expect(h.state.selectionElement).toBeNull();

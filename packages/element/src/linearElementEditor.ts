@@ -421,7 +421,7 @@ export class LinearElementEditor {
       }
 
       // suggest bindings for first and last point if selected
-      let suggestedBindings: ExcalidrawBindableElement[] = [];
+      let suggestedBinding: AppState["suggestedBinding"] = null;
       if (isBindingElement(element, false)) {
         const firstIndexIsSelected = selectedPointsIndices[0] === 0;
         const lastIndexIsSelected =
@@ -458,7 +458,7 @@ export class LinearElementEditor {
         }
 
         if (coords.length) {
-          suggestedBindings = maybeSuggestBindingsForBindingElementAtCoords(
+          suggestedBinding = maybeSuggestBindingsForBindingElementAtCoords(
             element,
             firstIndexIsSelected && lastIndexIsSelected
               ? "both"
@@ -494,7 +494,7 @@ export class LinearElementEditor {
 
       return {
         selectedLinearElement: newLinearElementEditor,
-        suggestedBindings,
+        suggestedBinding,
       } as Pick<AppState, keyof AppState>;
     }
 
