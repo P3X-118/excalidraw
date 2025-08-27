@@ -254,12 +254,22 @@ const renderBindingHighlight = (
   appState: InteractiveCanvasAppState,
   suggestedBinding: NonNullable<InteractiveCanvasAppState["suggestedBinding"]>,
 ) => {
+  const cx =
+    (suggestedBinding.x + suggestedBinding.width / 2 + appState.scrollX) *
+    window.devicePixelRatio;
+  const cy =
+    (suggestedBinding.y + suggestedBinding.height / 2 + appState.scrollY) *
+    window.devicePixelRatio;
   context.save();
 
+  context.translate(cx, cy);
+  context.rotate(suggestedBinding.angle);
+  context.translate(-cx, -cy);
   context.translate(
     appState.scrollX + suggestedBinding.x,
     appState.scrollY + suggestedBinding.y,
   );
+  context.scale(1 / window.devicePixelRatio, 1 / window.devicePixelRatio);
 
   const drawable = ShapeCache.generateBindableElementHighlight(
     suggestedBinding,

@@ -119,20 +119,21 @@ export class ShapeCache {
       embedsValidationStatus: EmbedsValidationStatus;
     },
   ) => {
-    const shape = generateElementShape(
-      element,
-      ShapeCache.rg,
-      renderConfig || {
-        isExporting: false,
-        canvasBackgroundColor: COLOR_PALETTE.white,
-        embedsValidationStatus: null,
-      },
-    ) as Drawable;
+    let shape =
+      (ShapeCache.get(element) as Drawable | null) ||
+      (ShapeCache.rg.rectangle(0, 0, element.width, element.height, {
+        roughness: 0,
+        strokeWidth: 2,
+      }) as Drawable);
+
+    // Clone the shape from the cache
+    shape = {
+      ...shape,
+    };
 
     shape.options.fill = "transparent";
     shape.options.stroke =
       appState.theme === THEME.DARK ? "#035da1" : "#6abdfc";
-    shape.options.strokeWidth = shape.options.strokeWidth * 1.1;
 
     return shape;
   };
