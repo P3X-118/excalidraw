@@ -243,6 +243,7 @@ import {
   getBindingStrategyForDraggingBindingElementEndpoints,
   getStartGlobalEndLocalPointsForSimpleArrowBinding,
   mutateElement,
+  pointDraggingUpdates,
 } from "@excalidraw/element";
 
 import type { GlobalPoint, LocalPoint, Radians } from "@excalidraw/math";
@@ -934,19 +935,24 @@ class App extends React.Component<AppProps, AppState> {
       );
 
       if (hoveredElement) {
+        invariant(
+          this.state.selectedLinearElement?.elementId === arrow.id,
+          "The selectedLinearElement is expected to not change while a bind mode timeout is ticking",
+        );
+
+        // Once the start is set to inside binding, it remains so
+        const arrowStartIsInside =
+          this.state.selectedLinearElement.pointerDownState
+            .arrowStartIsInside ||
+          arrow.startBinding?.elementId === hoveredElement.id;
+
+        // Change the global binding mode
         flushSync(() => {
           invariant(
-            this.state.selectedLinearElement?.elementId === arrow.id,
-            "The selectedLinearElement is expected to not change while a bind mode timeout is ticking",
+            this.state.selectedLinearElement,
+            "this.state.selectedLinearElement must exist",
           );
 
-          // Once the start is set to inside binding, it remains so
-          const arrowStartIsInside =
-            this.state.selectedLinearElement.pointerDownState
-              .arrowStartIsInside ||
-            arrow.startBinding?.elementId === hoveredElement.id;
-
-          // Change the global binding mode
           this.setState({
             bindMode: "inside",
             selectedLinearElement: {
@@ -957,21 +963,36 @@ class App extends React.Component<AppProps, AppState> {
               },
             },
           });
-
-          // Make the arrow endpoint "jump" to the cursor
-          const point = LinearElementEditor.createPointAt(
-            arrow,
-            this.scene.getNonDeletedElementsMap(),
-            x,
-            y,
-            isBindingEnabled(this.state) ? this.getEffectiveGridSize() : null,
-          );
-          this.scene.mutateElement(arrow, {
-            points: startDragged
-              ? [point, ...arrow.points.slice(1)]
-              : [...arrow.points.slice(0, -1), point],
-          });
         });
+
+        const elementsMap = this.scene.getNonDeletedElementsMap();
+        const elements = this.scene.getNonDeletedElements();
+        const newDraggingPointPosition = LinearElementEditor.createPointAt(
+          arrow,
+          elementsMap,
+          x - this.state.selectedLinearElement.pointerOffset.x,
+          y - this.state.selectedLinearElement.pointerOffset.y,
+          this.getEffectiveGridSize(),
+        );
+        const draggingPoint =
+          arrow.points[
+            this.state.selectedLinearElement.pointerDownState.lastClickedPoint
+          ];
+        const deltaX = newDraggingPointPosition[0] - draggingPoint[0];
+        const deltaY = newDraggingPointPosition[1] - draggingPoint[1];
+        LinearElementEditor.movePoints(
+          arrow,
+          this.scene,
+          pointDraggingUpdates(
+            startDragged ? [0] : endDragged ? [arrow.points.length - 1] : [],
+            deltaX,
+            deltaY,
+            elementsMap,
+            arrow,
+            elements,
+            this,
+          ),
+        );
       }
     };
 
