@@ -29,6 +29,7 @@ import {
   FIXED_BINDING_DISTANCE,
   getHeadingForElbowArrowSnap,
   getGlobalFixedPointForBindableElement,
+  getFixedBindingDistance,
 } from "./binding";
 import { distanceToElement } from "./distance";
 import {
@@ -1290,8 +1291,8 @@ const getElbowArrowData = (
         offsetFromHeading(
           startHeading,
           arrow.startArrowhead
-            ? FIXED_BINDING_DISTANCE * 6
-            : FIXED_BINDING_DISTANCE * 2,
+            ? getFixedBindingDistance(hoveredStartElement) * 6
+            : getFixedBindingDistance(hoveredStartElement) * 2,
           1,
         ),
       )
@@ -1303,8 +1304,8 @@ const getElbowArrowData = (
         offsetFromHeading(
           endHeading,
           arrow.endArrowhead
-            ? FIXED_BINDING_DISTANCE * 6
-            : FIXED_BINDING_DISTANCE * 2,
+            ? getFixedBindingDistance(hoveredEndElement) * 6
+            : getFixedBindingDistance(hoveredEndElement) * 2,
           1,
         ),
       )

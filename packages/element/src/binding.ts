@@ -102,6 +102,10 @@ export type BindingStrategy =
 
 export const FIXED_BINDING_DISTANCE = 5;
 
+export const getFixedBindingDistance = (
+  element: ExcalidrawBindableElement,
+): number => FIXED_BINDING_DISTANCE + element.strokeWidth / 2;
+
 export const shouldEnableBindingForPointerEvent = (
   event: React.PointerEvent<HTMLElement>,
 ) => {
@@ -1002,14 +1006,14 @@ export const bindPointToSnapToElementOutline = (
       bindableElement,
       elementsMap,
       intersector,
-      FIXED_BINDING_DISTANCE,
+      getFixedBindingDistance(bindableElement),
     ).sort(pointDistanceSq)[0];
   } else {
     const halfVector = vectorScale(
       vectorNormalize(vectorFromPoint(edgePoint, adjacentPoint)),
       pointDistance(edgePoint, adjacentPoint) +
         Math.max(bindableElement.width, bindableElement.height) +
-        FIXED_BINDING_DISTANCE * 2,
+        getFixedBindingDistance(bindableElement) * 2,
     );
     const intersector =
       customIntersector ??
@@ -1024,7 +1028,7 @@ export const bindPointToSnapToElementOutline = (
             bindableElement,
             elementsMap,
             intersector,
-            FIXED_BINDING_DISTANCE,
+            getFixedBindingDistance(bindableElement),
           ).sort(
             (g, h) =>
               pointDistanceSq(g, adjacentPoint) -
@@ -1098,15 +1102,15 @@ export const avoidRectangularCorner = (
 
   if (nonRotatedPoint[0] < element.x && nonRotatedPoint[1] < element.y) {
     // Top left
-    if (nonRotatedPoint[1] - element.y > -FIXED_BINDING_DISTANCE) {
+    if (nonRotatedPoint[1] - element.y > -getFixedBindingDistance(element)) {
       return pointRotateRads<GlobalPoint>(
-        pointFrom(element.x - FIXED_BINDING_DISTANCE, element.y),
+        pointFrom(element.x - getFixedBindingDistance(element), element.y),
         center,
         element.angle,
       );
     }
     return pointRotateRads(
-      pointFrom(element.x, element.y - FIXED_BINDING_DISTANCE),
+      pointFrom(element.x, element.y - getFixedBindingDistance(element)),
       center,
       element.angle,
     );
@@ -1115,18 +1119,21 @@ export const avoidRectangularCorner = (
     nonRotatedPoint[1] > element.y + element.height
   ) {
     // Bottom left
-    if (nonRotatedPoint[0] - element.x > -FIXED_BINDING_DISTANCE) {
+    if (nonRotatedPoint[0] - element.x > -getFixedBindingDistance(element)) {
       return pointRotateRads(
         pointFrom(
           element.x,
-          element.y + element.height + FIXED_BINDING_DISTANCE,
+          element.y + element.height + getFixedBindingDistance(element),
         ),
         center,
         element.angle,
       );
     }
     return pointRotateRads(
-      pointFrom(element.x - FIXED_BINDING_DISTANCE, element.y + element.height),
+      pointFrom(
+        element.x - getFixedBindingDistance(element),
+        element.y + element.height,
+      ),
       center,
       element.angle,
     );
@@ -1137,12 +1144,12 @@ export const avoidRectangularCorner = (
     // Bottom right
     if (
       nonRotatedPoint[0] - element.x <
-      element.width + FIXED_BINDING_DISTANCE
+      element.width + getFixedBindingDistance(element)
     ) {
       return pointRotateRads(
         pointFrom(
           element.x + element.width,
-          element.y + element.height + FIXED_BINDING_DISTANCE,
+          element.y + element.height + getFixedBindingDistance(element),
         ),
         center,
         element.angle,
@@ -1150,7 +1157,7 @@ export const avoidRectangularCorner = (
     }
     return pointRotateRads(
       pointFrom(
-        element.x + element.width + FIXED_BINDING_DISTANCE,
+        element.x + element.width + getFixedBindingDistance(element),
         element.y + element.height,
       ),
       center,
@@ -1163,19 +1170,22 @@ export const avoidRectangularCorner = (
     // Top right
     if (
       nonRotatedPoint[0] - element.x <
-      element.width + FIXED_BINDING_DISTANCE
+      element.width + getFixedBindingDistance(element)
     ) {
       return pointRotateRads(
         pointFrom(
           element.x + element.width,
-          element.y - FIXED_BINDING_DISTANCE,
+          element.y - getFixedBindingDistance(element),
         ),
         center,
         element.angle,
       );
     }
     return pointRotateRads(
-      pointFrom(element.x + element.width + FIXED_BINDING_DISTANCE, element.y),
+      pointFrom(
+        element.x + element.width + getFixedBindingDistance(element),
+        element.y,
+      ),
       center,
       element.angle,
     );
@@ -1228,7 +1238,7 @@ const snapToMid = (
   ) {
     // LEFT
     return pointRotateRads<GlobalPoint>(
-      pointFrom(x - FIXED_BINDING_DISTANCE, center[1]),
+      pointFrom(x - getFixedBindingDistance(element), center[1]),
       center,
       angle,
     );
@@ -1239,7 +1249,7 @@ const snapToMid = (
   ) {
     // TOP
     return pointRotateRads(
-      pointFrom(center[0], y - FIXED_BINDING_DISTANCE),
+      pointFrom(center[0], y - getFixedBindingDistance(element)),
       center,
       angle,
     );
@@ -1250,7 +1260,7 @@ const snapToMid = (
   ) {
     // RIGHT
     return pointRotateRads(
-      pointFrom(x + width + FIXED_BINDING_DISTANCE, center[1]),
+      pointFrom(x + width + getFixedBindingDistance(element), center[1]),
       center,
       angle,
     );
@@ -1261,12 +1271,12 @@ const snapToMid = (
   ) {
     // DOWN
     return pointRotateRads(
-      pointFrom(center[0], y + height + FIXED_BINDING_DISTANCE),
+      pointFrom(center[0], y + height + getFixedBindingDistance(element)),
       center,
       angle,
     );
   } else if (element.type === "diamond") {
-    const distance = FIXED_BINDING_DISTANCE;
+    const distance = getFixedBindingDistance(element);
     const topLeft = pointFrom<GlobalPoint>(
       x + width / 4 - distance,
       y + height / 4 - distance,
