@@ -1,5 +1,3 @@
-import rough from "roughjs/bin/rough";
-
 import {
   pointFrom,
   pointsEqual,
@@ -18,7 +16,7 @@ import {
   throttleRAF,
 } from "@excalidraw/common";
 
-import { LinearElementEditor, ShapeCache } from "@excalidraw/element";
+import { LinearElementEditor } from "@excalidraw/element";
 import {
   getOmitSidesForDevice,
   getTransformHandles,
@@ -246,37 +244,6 @@ const renderSelectionBorder = (
       angle,
     );
   }
-  context.restore();
-};
-
-const renderBindingHighlight = (
-  context: CanvasRenderingContext2D,
-  appState: InteractiveCanvasAppState,
-  suggestedBinding: NonNullable<InteractiveCanvasAppState["suggestedBinding"]>,
-) => {
-  const cx =
-    (suggestedBinding.x + suggestedBinding.width / 2 + appState.scrollX) *
-    window.devicePixelRatio;
-  const cy =
-    (suggestedBinding.y + suggestedBinding.height / 2 + appState.scrollY) *
-    window.devicePixelRatio;
-  context.save();
-
-  context.translate(cx, cy);
-  context.rotate(suggestedBinding.angle);
-  context.translate(-cx, -cy);
-  context.translate(
-    appState.scrollX + suggestedBinding.x,
-    appState.scrollY + suggestedBinding.y,
-  );
-  context.scale(1 / window.devicePixelRatio, 1 / window.devicePixelRatio);
-
-  const drawable = ShapeCache.generateBindableElementHighlight(
-    suggestedBinding,
-    appState,
-  );
-  rough.canvas(context.canvas).draw(drawable);
-
   context.restore();
 };
 
@@ -738,10 +705,6 @@ const _renderInteractiveScene = ({
         renderConfig.selectionColor,
       );
     }
-  }
-
-  if (appState.isBindingEnabled && appState.suggestedBinding) {
-    renderBindingHighlight(context, appState, appState.suggestedBinding);
   }
 
   if (appState.frameToHighlight) {

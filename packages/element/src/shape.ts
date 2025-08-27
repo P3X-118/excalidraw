@@ -113,11 +113,6 @@ export class ShapeCache {
   >(
     element: T,
     appState: Pick<InteractiveCanvasAppState, "theme">,
-    renderConfig?: {
-      isExporting: boolean;
-      canvasBackgroundColor: AppState["viewBackgroundColor"];
-      embedsValidationStatus: EmbedsValidationStatus;
-    },
   ) => {
     let shape =
       (ShapeCache.get(element) as Drawable | null) ||
@@ -129,11 +124,12 @@ export class ShapeCache {
     // Clone the shape from the cache
     shape = {
       ...shape,
+      options: {
+        ...shape.options,
+        fill: "transparent",
+        stroke: appState.theme === THEME.DARK ? "#035da1" : "#6abdfc",
+      },
     };
-
-    shape.options.fill = "transparent";
-    shape.options.stroke =
-      appState.theme === THEME.DARK ? "#035da1" : "#6abdfc";
 
     return shape;
   };

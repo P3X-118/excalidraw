@@ -602,6 +602,42 @@ const generateElementWithCanvas = (
   return prevElementWithCanvas;
 };
 
+const drawElementHighlight = (
+  context: CanvasRenderingContext2D,
+  appState: StaticCanvasAppState,
+) => {
+  if (appState.suggestedBinding) {
+    const cx =
+      (appState.suggestedBinding.x +
+        appState.suggestedBinding.width / 2 +
+        appState.scrollX) *
+      window.devicePixelRatio;
+    const cy =
+      (appState.suggestedBinding.y +
+        appState.suggestedBinding.height / 2 +
+        appState.scrollY) *
+      window.devicePixelRatio;
+    context.save();
+
+    context.translate(cx, cy);
+    context.rotate(appState.suggestedBinding.angle);
+    context.translate(-cx, -cy);
+    context.translate(
+      appState.scrollX + appState.suggestedBinding.x,
+      appState.scrollY + appState.suggestedBinding.y,
+    );
+    context.scale(1 / window.devicePixelRatio, 1 / window.devicePixelRatio);
+
+    const drawable = ShapeCache.generateBindableElementHighlight(
+      appState.suggestedBinding,
+      appState,
+    );
+    rough.canvas(context.canvas).draw(drawable);
+
+    context.restore();
+  }
+};
+
 const drawElementFromCanvas = (
   elementWithCanvas: ExcalidrawElementWithCanvas,
   context: CanvasRenderingContext2D,
@@ -691,6 +727,10 @@ const drawElementFromCanvas = (
   context.restore();
 
   // Clear the nested element we appended to the DOM
+
+  if (appState.suggestedBinding?.id === elementWithCanvas.element.id) {
+    drawElementHighlight(context, appState);
+  }
 };
 
 export const renderSelectionElement = (
